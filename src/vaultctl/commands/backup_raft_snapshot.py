@@ -225,7 +225,7 @@ def backup_raft_snapshot(  # noqa: PLR0913
             s3_key,
             ExtraArgs={
                 "ContentType": "application/gzip",
-                "ChecksumAlgorithm": s3_checksum_algorithm,
+                "ChecksumAlgorithm": s3_checksum_algorithm.value,
             },
         )
     except ClientError:
