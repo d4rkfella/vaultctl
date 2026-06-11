@@ -33,7 +33,7 @@ jobs:
         run: |
           python3 <<'PY'
           import tomllib, pathlib
-          p = tomllib.load(pathlib.Path("pyproject.toml").read_bytes())["project"]
+          p = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]
           print(f"version={p['version']}")
           print(f"name={p['name']}")
           PY
