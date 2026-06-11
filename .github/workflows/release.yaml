@@ -61,8 +61,6 @@ jobs:
           uv build
 
       - name: Publish CLI to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           uv publish
 
