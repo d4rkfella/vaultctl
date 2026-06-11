@@ -1,0 +1,27 @@
+{
+	"name": "vaultctl devcontainer",
+	"image": "mcr.microsoft.com/devcontainers/python:3-3.14",
+    "postCreateCommand": "uv sync",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"charliermarsh.ruff",
+				"the0807.uv-toolkit"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/workspaces/vaultctl/.venv/bin/python",
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff",
+					"editor.formatOnSave": true
+				},
+				"ruff.path": ["/usr/local/bin/ruff"]
+			}
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers-extra/features/uv:1.0.2": {},
+		"ghcr.io/devcontainers-extra/features/ruff:2.0.0": { "version": "0.15.16"}
+	}
+}
