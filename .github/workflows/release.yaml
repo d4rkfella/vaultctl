@@ -32,10 +32,13 @@ jobs:
         id: meta
         run: |
           python3 <<'PY'
-          import tomllib, pathlib
+          import os, tomllib, pathlib
           p = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]
           print(f"version={p['version']}")
           print(f"name={p['name']}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={p['version']}\n")
+              f.write(f"name={p['name']}\n")
           PY
         shell: bash
 
