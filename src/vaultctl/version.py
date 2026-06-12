@@ -1,8 +1,17 @@
+import importlib.metadata
+
 import typer
 
 app = typer.Typer()
 
 
+def _get_version() -> str:
+    try:
+        return importlib.metadata.version("vaultctl")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
+
+
 @app.command()
 def version() -> None:
-    print("vaultctl 0.2.1")  # noqa: T201
+    print(f"vaultctl {_get_version()}")  # noqa: T201

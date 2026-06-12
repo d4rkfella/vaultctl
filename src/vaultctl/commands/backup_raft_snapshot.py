@@ -208,7 +208,7 @@ def backup_raft_snapshot(  # noqa: PLR0913
     else:
         s3_bucket, s3_key = parse_s3_uri(destination)
 
-        if s3_key.endswith("/"):
+        if not s3_key or s3_key.endswith("/"):
             timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S")
             snapshot_name = f"vault-snapshot-{timestamp}.snap"
             s3_key = f"{s3_key}{snapshot_name}"
