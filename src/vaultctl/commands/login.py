@@ -69,10 +69,6 @@ def login(  # noqa: C901, PLR0913
     password = kv.get("password")
     token = kv.get("token")
 
-    if method == "userpass" and not username:
-        msg = "'username' must be specified"
-        raise typer.BadParameter(msg)
-
     try:
         if method == "token":
             if not token:
@@ -86,6 +82,8 @@ def login(  # noqa: C901, PLR0913
             token_info = lookup["data"]
 
         elif method == "userpass":
+            if not username:
+                username = typer.prompt("Username", type=str)
             if not password:
                 password = typer.prompt(
                     "Password (will be hidden)",

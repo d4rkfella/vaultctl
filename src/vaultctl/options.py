@@ -1,10 +1,9 @@
-import re
 from pathlib import Path
 from typing import Annotated
 
 from typer import Option
 
-from .utils import parse_regex, validate_address, validate_s3_key_prefix
+from .utils import validate_address
 
 AwsEndpointUrlOption = Annotated[
     str | None,
@@ -35,21 +34,6 @@ AwsProfileOption = Annotated[
 AwsRegionOption = Annotated[
     str,
     Option(envvar="AWS_REGION", help="AWS Region (e.g., us-east-1)."),
-]
-
-S3BucketNameOption = Annotated[
-    str | None,
-    Option(
-        envvar="S3_BUCKET_NAME",
-        help="Storage bucket where snapshots are stored",
-    ),
-]
-
-S3KeyPrefixOption = Annotated[
-    str,
-    Option(
-        callback=validate_s3_key_prefix,
-    ),
 ]
 
 AddressOption = Annotated[
@@ -136,18 +120,34 @@ K8sMountPointOption = Annotated[
     Option(envvar="VAULT_K8S_MOUNT_POINT", help="Vault K8s auth backend mount path."),
 ]
 
-SnapshotNameOption = Annotated[
-    str | None,
+K8sSaTokenPathOption = Annotated[
+    Path,
     Option(
-        help="Name of the Vault snapshot to restore.",
+        envvar="VAULT_K8S_SA_TOKEN_PATH",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        writable=False,
+        resolve_path=True,
+        path_type=str,
+        help="Path to the Kubernetes service account token file used for Vault Kubernetes authentication. The default is /var/run/secrets/kubernetes.io/serviceaccount/token. This can also be specified via the VAULT_K8S_SA_TOKEN_PATH environment variable.",
     ),
 ]
 
-SnapshotNameRegexOption = Annotated[
-    re.Pattern | None,
+RestoreSourceOption = Annotated[
+    str | None,
     Option(
-        parser=parse_regex,
-        help="Regex pattern to match Vault snapshot names.",
+        "--from",
+        help="Source path. Local file path or S3 URI (e.g., s3://bucket/key).",
+    ),
+]
+
+BackupDestinationOption = Annotated[
+    str | None,
+    Option(
+        "--to",
+        help="Destination path. Local file/directory or S3 URI (e.g., s3://bucket/prefix/).",
     ),
 ]
 
@@ -168,33 +168,5 @@ TimeoutOption = Annotated[
         "--timeout",
         "-t",
         help="HTTP request timeout in seconds for Vault API calls.",
-    ),
-]
-
-OutputFileOption = Annotated[
-    Path | None,
-    Option(
-        "--output-file",
-        "-o",
-        help="Path to write the snapshot to locally. If a directory, a timestamped filename is generated.",
-        dir_okay=True,
-        writable=True,
-        resolve_path=True,
-        path_type=str,
-    ),
-]
-
-SnapshotFileOption = Annotated[
-    Path | None,
-    Option(
-        "--snapshot-file",
-        "-f",
-        help="Path to a local snapshot file to restore.",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        resolve_path=True,
-        path_type=str,
     ),
 ]

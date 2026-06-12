@@ -6,7 +6,7 @@ import io
 import tarfile
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated
 
 import hvac
 import typer
@@ -20,18 +20,22 @@ from vaultctl.options import (
     AwsProfileOption,
     AwsRegionOption,
     AwsSecretAccessKeyOption,
+    BackupDestinationOption,
     CACertOption,
     CAPathOption,
     K8sMountPointOption,
     K8sRoleOption,
-    OutputFileOption,
-    S3BucketNameOption,
-    S3KeyPrefixOption,
     SkipVerifyOption,
     TimeoutOption,
     TokenOption,
 )
-from vaultctl.utils import handle_s3_authentication, handle_vault_authentication, logger
+from vaultctl.utils import (
+    handle_s3_authentication,
+    handle_vault_authentication,
+    is_s3_uri,
+    logger,
+    parse_s3_uri,
+)
 
 app = typer.Typer()
 
@@ -87,7 +91,7 @@ def verify_internal_checksums(snapshot_data: bytes) -> None:
                 files_in_tar[member.name] = content
 
             if sha_sums_content is None:
-                msg = "SHA256SUMS file not found in the Raft snapshot archive."
+                msg = "SHA256SUMS file not found in the snapshot archive."
                 raise ValueError(
                     msg,
                 )
@@ -119,33 +123,34 @@ def verify_internal_checksums(snapshot_data: bytes) -> None:
 
 
 @app.command(
-    help="Executes a complete workflow for obtaining a HashiCorp Vault Raft snapshot from a cluster, verifying its integrity, and uploading it securely to S3 storage. Provides flexible authentication options for both HashiCorp Vault and S3 APIs.",
+    help="Executes a complete workflow for obtaining a HashiCorp Vault Raft snapshot, verifying its integrity, and saving it to a local path or S3 URI. Provides flexible authentication options for both HashiCorp Vault and S3 APIs.",
 )
 def backup_raft_snapshot(  # noqa: PLR0913
     address: AddressOption,
-    s3_bucket_name: S3BucketNameOption = None,
-    output_file: OutputFileOption = None,
+    destination: BackupDestinationOption = None,
     k8s_role: K8sRoleOption = None,
     k8s_mount_point: K8sMountPointOption = "kubernetes",
-    token: TokenOption = None,
-    ca_cert: CACertOption = None,
-    ca_path: CAPathOption = None,
+    k8s_sa_token_path: Path = Path(
+        "/var/run/secrets/kubernetes.io/serviceaccount/token",
+    ),
     aws_profile: AwsProfileOption = None,
     aws_access_key_id: AwsAccessKeyIdOption = None,
     aws_secret_access_key: AwsSecretAccessKeyOption = None,
     aws_endpoint_url: AwsEndpointUrlOption = None,
     aws_region: AwsRegionOption = "us-east-1",
-    s3_key_prefix: S3KeyPrefixOption = "",
     s3_checksum_algorithm: Annotated[
         S3ChecksumAlgorithm,
         typer.Option(help="The algorithm to use for s3 transport checksum."),
     ] = S3ChecksumAlgorithm.CRC64NVME,
+    token: TokenOption = None,
+    ca_cert: CACertOption = None,
+    ca_path: CAPathOption = None,
     timeout: TimeoutOption = 30,
     *,
     skip_verify: SkipVerifyOption = False,
 ) -> None:
-    if not s3_bucket_name and not output_file:
-        msg = "Either --s3-bucket-name or --output-file is required"
+    if not destination:
+        msg = "--to is required"
         raise typer.BadParameter(msg)
 
     vault_client = handle_vault_authentication(
@@ -163,6 +168,7 @@ def backup_raft_snapshot(  # noqa: PLR0913
         token=token,
         k8s_role=k8s_role,
         k8s_mount_point=k8s_mount_point,
+        k8s_token_path=k8s_sa_token_path,
     )
 
     if vault_client.sys.is_sealed():
@@ -171,12 +177,12 @@ def backup_raft_snapshot(  # noqa: PLR0913
 
     logger.info("Starting backup...")
 
-    logger.info("Requesting raft snapshot...")
+    logger.info("Requesting snapshot...")
     response: Response = vault_client.sys.take_raft_snapshot()
 
     if response.status_code != 200:  # noqa: PLR2004
         logger.error(
-            "Raft snapshot request failed with status code %s.",
+            "Snapshot request failed with status code %s.",
             response.status_code,
         )
         logger.debug("Response body: %s", response.text)
@@ -184,53 +190,52 @@ def backup_raft_snapshot(  # noqa: PLR0913
 
     snapshot_data: bytes = response.content
 
-    logger.info("Raft snapshot retrieved.")
+    logger.info("Snapshot retrieved.")
 
     try:
         verify_internal_checksums(snapshot_data)
-    except (tarfile.TarError, ValueError):
-        logger.exception("Verifying raft snapshot integrity")
+    except tarfile.TarError, ValueError:
+        logger.exception("Verifying snapshot integrity")
         raise typer.Exit(1) from None
 
-    if output_file:
-        output_path = Path(output_file)
+    if not is_s3_uri(destination):
+        output_path = Path(destination)
         if output_path.is_dir():
             timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S")
             output_path = output_path / f"vault-snapshot-{timestamp}.snap"
         output_path.write_bytes(snapshot_data)
         logger.info("Snapshot written to %s", output_path)
-        logger.info("Backup completed")
-        return
+    else:
+        s3_bucket, s3_key = parse_s3_uri(destination)
 
-    s3_bucket_name = cast("str", s3_bucket_name)
+        if s3_key.endswith("/"):
+            timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S")
+            snapshot_name = f"vault-snapshot-{timestamp}.snap"
+            s3_key = f"{s3_key}{snapshot_name}"
 
-    s3_client = handle_s3_authentication(
-        bucket_name=s3_bucket_name,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-        aws_region=aws_region,
-        aws_profile=aws_profile,
-        endpoint_url=aws_endpoint_url,
-    )
-
-    timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S")
-    snapshot_name = f"vault-snapshot-{timestamp}.snap"
-    s3_key = f"{s3_key_prefix}{snapshot_name}"
-
-    try:
-        logger.info("Uploading raft snapshot to %s/%s...", s3_bucket_name, s3_key)
-        s3_client.upload_fileobj(
-            io.BytesIO(snapshot_data),
-            s3_bucket_name,
-            s3_key,
-            ExtraArgs={
-                "ContentType": "application/gzip",
-                "ChecksumAlgorithm": s3_checksum_algorithm.value,
-            },
+        s3_client = handle_s3_authentication(
+            bucket_name=s3_bucket,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_region=aws_region,
+            aws_profile=aws_profile,
+            endpoint_url=aws_endpoint_url,
         )
-    except ClientError:
-        logger.exception("Uploading raft snapshot")
-        raise typer.Exit(1) from None
 
-    logger.info("Raft snapshot uploaded.")
-    logger.info("Backup completed")
+        try:
+            logger.info("Uploading snapshot to %s/%s...", s3_bucket, s3_key)
+            s3_client.upload_fileobj(
+                io.BytesIO(snapshot_data),
+                s3_bucket,
+                s3_key,
+                ExtraArgs={
+                    "ContentType": "application/gzip",
+                    "ChecksumAlgorithm": s3_checksum_algorithm.value,
+                },
+            )
+            logger.info("Snapshot uploaded.")
+        except ClientError:
+            logger.exception("Uploading snapshot")
+            raise typer.Exit(1) from None
+
+    logger.info("Backup completed successfully.")

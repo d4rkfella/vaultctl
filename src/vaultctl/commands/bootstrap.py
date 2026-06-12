@@ -14,12 +14,8 @@ from vaultctl.options import (
     AwsSecretAccessKeyOption,
     CACertOption,
     CAPathOption,
-    S3BucketNameOption,
-    S3KeyPrefixOption,
+    RestoreSourceOption,
     SkipVerifyOption,
-    SnapshotFileOption,
-    SnapshotNameOption,
-    SnapshotNameRegexOption,
     TimeoutOption,
 )
 
@@ -29,20 +25,15 @@ AUTO_UNSEAL_MAX_ATTEMPT = 10
 
 
 @app.command(
-    help="Init, unseal and force restore a hashicorp vault cluster from S3 storage using raft snapshots",
+    help="Init, unseal and force restore a HashiCorp Vault cluster from a Raft snapshot (S3 or local).",
 )
 def bootstrap(  # noqa: PLR0913
-    ctx: typer.Context,
     address: AddressOption,
-    s3_bucket_name: S3BucketNameOption = None,
-    snapshot_file: SnapshotFileOption = None,
+    source: RestoreSourceOption = None,
     *,
     ca_cert: CACertOption = None,
     ca_path: CAPathOption = None,
     skip_verify: SkipVerifyOption = False,
-    s3_key_prefix: S3KeyPrefixOption = "",
-    filename: SnapshotNameOption = None,
-    filename_regex: SnapshotNameRegexOption = None,
     aws_profile: AwsProfileOption = None,
     aws_access_key_id: AwsAccessKeyIdOption = None,
     aws_secret_access_key: AwsSecretAccessKeyOption = None,
@@ -50,8 +41,8 @@ def bootstrap(  # noqa: PLR0913
     aws_region: AwsRegionOption = "us-east-1",
     timeout: TimeoutOption = 30,
 ) -> None:
-    if not s3_bucket_name and not snapshot_file:
-        msg = "Either --s3-bucket-name or --snapshot-file is required"
+    if not source:
+        msg = "--from is required"
         raise typer.BadParameter(msg)
     client = hvac.Client(
         url=address,
@@ -102,16 +93,11 @@ def bootstrap(  # noqa: PLR0913
         typer.echo("Vault is unsealed and ready. Starting restore...")
 
         restore_raft_snapshot(
-            ctx=ctx,
             address=address,
+            source=source,
             ca_cert=ca_cert,
             ca_path=ca_path,
             skip_verify=skip_verify,
-            s3_bucket_name=s3_bucket_name,
-            snapshot_file=snapshot_file,
-            s3_key_prefix=s3_key_prefix,
-            filename=filename,
-            filename_regex=filename_regex,
             aws_profile=aws_profile,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,

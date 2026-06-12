@@ -38,34 +38,6 @@ def parse_regex(value: str) -> re.Pattern:
         raise typer.BadParameter(msg) from e
 
 
-def validate_s3_key_prefix(
-    value: str,
-) -> str:
-    """Validate S3 key prefix format."""
-    if not value:
-        return ""
-    if value.startswith("/"):
-        msg = "S3 key prefix must not start with '/'. Example: backups/2026/"
-        raise typer.BadParameter(
-            msg,
-        )
-
-    pattern = re.compile(r"^[A-Za-z0-9/_\-.]+$")
-    if not pattern.match(value):
-        msg = (
-            "S3 key prefix contains invalid characters. "
-            "Allowed: letters, numbers, '/', '-', '_', '.'"
-        )
-        raise typer.BadParameter(
-            msg,
-        )
-
-    if not value.endswith("/"):
-        value = value + "/"
-
-    return value
-
-
 def validate_address(
     ctx: typer.Context,  # noqa: ARG001
     param: object,  # noqa: ARG001
@@ -81,6 +53,19 @@ def validate_address(
     return value
 
 
+def is_s3_uri(path: str) -> bool:
+    return path.startswith("s3://")
+
+
+def parse_s3_uri(path: str) -> tuple[str, str]:
+    if not path.startswith("s3://"):
+        msg = f"Invalid S3 URI: {path}"
+        raise ValueError(msg)
+    rest = path[5:]
+    bucket, _sep, key = rest.partition("/")
+    return bucket, key
+
+
 def handle_vault_authentication(
     client: hvac.Client,
     token: str | None,
@@ -91,19 +76,27 @@ def handle_vault_authentication(
     token_filepath = Path.home() / ".vault-token"
 
     if token:
+        logger.info("Authenticating to Vault using provided token...")
         client.token = token
         return client
 
     if token_filepath.exists() and (saved_token := token_filepath.read_text().strip()):
+        logger.info(
+            "Authenticating to Vault using existing token from %s...",
+            token_filepath,
+        )
         client.token = saved_token
         return client
 
     if k8s_role:
-        logger.info("Attempting Kubernetes Auth for role: %s...", k8s_role)
+        logger.info(
+            "Authenticating to Vault using Kubernetes Auth method with role: %s...",
+            k8s_role,
+        )
 
         if not k8s_token_path.exists():
             logger.error(
-                "K8s token file not found at %s.",
+                "Token file not found at %s.",
                 k8s_token_path,
             )
             raise typer.Exit(code=1)
@@ -122,13 +115,14 @@ def handle_vault_authentication(
         else:
             return client
 
-    logger.error("Vault client authentication failed.")
+    logger.error(
+        "Vault authentication failed. No valid authentication method found. Please provide a token, use the 'login' command, or configure Kubernetes authentication by providing the role and mount point to use.",
+    )
     raise typer.Exit(code=1)
 
 
 def handle_s3_authentication(  # noqa: PLR0913
     bucket_name: str,
-    *,
     aws_access_key_id: str | None = None,
     aws_secret_access_key: str | None = None,
     aws_session_token: str | None = None,
