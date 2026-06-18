@@ -28,26 +28,25 @@ app = typer.Typer()
 
 @app.command(help="Authenticate with Vault and optionally save the token.")
 def login(  # noqa: C901, PLR0913
-    ctx: typer.Context,  # noqa: ARG001
     address: AddressOption,
-    *,
     ca_cert: CACertOption = None,
     ca_path: CAPathOption = None,
-    skip_verify: SkipVerifyOption = False,
     method: Annotated[
         Literal["token", "userpass"],
         typer.Option(help="Auth method: token (default) or userpass"),
     ] = "token",
-    no_store: Annotated[
-        bool,
-        typer.Option(help="Do not persist the token to disk", is_flag=True),
-    ] = False,
     params: Annotated[
         list[str] | None,
         typer.Argument(
             help="Auth parameters as key=value, like username=alice password=foo",
         ),
     ] = None,
+    *,
+    no_store: Annotated[
+        bool,
+        typer.Option(help="Do not persist the token to disk", is_flag=True),
+    ] = False,
+    skip_verify: SkipVerifyOption = False,
 ) -> None:
     kv = {}
     if params:

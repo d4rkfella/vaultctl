@@ -32,7 +32,6 @@ def to_dict(resp: dict[str, Any] | Response | None) -> dict[str, Any]:
 
 @app.command()
 def rotate_issuing(  # noqa: PLR0913
-    ctx: typer.Context,  # noqa: ARG001
     address: AddressOption,
     token: TokenOption = None,
     ca_cert: CACertOption = None,

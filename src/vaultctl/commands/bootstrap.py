@@ -30,16 +30,16 @@ AUTO_UNSEAL_MAX_ATTEMPT = 10
 def bootstrap(  # noqa: PLR0913
     address: AddressOption,
     source: RestoreSourceOption = None,
-    *,
     ca_cert: CACertOption = None,
     ca_path: CAPathOption = None,
-    skip_verify: SkipVerifyOption = False,
     aws_profile: AwsProfileOption = None,
     aws_access_key_id: AwsAccessKeyIdOption = None,
     aws_secret_access_key: AwsSecretAccessKeyOption = None,
     aws_endpoint_url: AwsEndpointUrlOption = None,
     aws_region: AwsRegionOption = "us-east-1",
     timeout: TimeoutOption = 30,
+    *,
+    skip_verify: SkipVerifyOption = False,
 ) -> None:
     if not source:
         msg = "--from is required"
