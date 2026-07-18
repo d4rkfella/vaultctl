@@ -29,7 +29,7 @@ packages = ["src/vaultctl"]
 
 [dependency-groups]
 dev = [
-    "types-hvac==2.4.0.20260610",
+    "types-hvac==2.4.0.20260718",
     "mypy-boto3-s3==1.43.50",
 ]
 
