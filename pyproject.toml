@@ -1,6 +1,6 @@
 [project]
 name = "vaultctl"
-version = "0.3.1"
+version = "0.3.2"
 description = "vaultctl is a command-line interface (CLI) tool designed to facilitate operations with HashiCorp Vault."
 readme = "README.md"
 license = { text = "MIT" }
