@@ -286,14 +286,14 @@ wheels = [
 
 [[package]]
 name = "types-hvac"
-version = "2.4.0.20260718"
+version = "2.4.0.20260728"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/14/2b908471c2c0d61a2e8d21ec837b7dd02a3e0f9d99fbf840ad8ac724c268/types_hvac-2.4.0.20260718.tar.gz", hash = "sha256:cebadb8a733015e7497756c138c0c9ac1f51fe7b1daa9aaba6d8c4a4f239ea60", size = 24766, upload-time = "2026-07-18T04:36:11.067Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/e5/3fdc470a9c10b53f328a79aa1b329dcd5eb171103f705929f66f96920fea/types_hvac-2.4.0.20260728.tar.gz", hash = "sha256:2c3d72b40a5ddf98dbc6d81b2a19ffd7d642d85d75d6b35f61d305653d5dd9b8", size = 25070, upload-time = "2026-07-28T04:51:34.739Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/35/bcec28247fc02f0e1f039d00da915446759e67007b3391cfa77f9a30937f/types_hvac-2.4.0.20260718-py3-none-any.whl", hash = "sha256:05ddb66d9b4bf0ced98f8e5240409f41828605d035781c580bf227ff1d98d728", size = 42645, upload-time = "2026-07-18T04:36:10.037Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/12/9c94dd2c4b1168c8cbbbf423f4b23fb139c4f28726e32f168ce1ea20846d/types_hvac-2.4.0.20260728-py3-none-any.whl", hash = "sha256:858635a1d3af46439f448a0a054eca7bb67ecff039787635fa0ed35368ca6b1e", size = 42803, upload-time = "2026-07-28T04:51:33.789Z" },
 ]
 
 [[package]]
@@ -344,5 +344,5 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy-boto3-s3", specifier = "==1.43.50" },
-    { name = "types-hvac", specifier = "==2.4.0.20260718" },
+    { name = "types-hvac", specifier = "==2.4.0.20260728" },
 ]
